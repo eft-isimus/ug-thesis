@@ -1,0 +1,6 @@
+*
+!create_input_files.py
+!.gitignore
+!setup.sh
+!make_jobs.sh
+!move_files.sh
