@@ -79,9 +79,9 @@ special_bonds fene
     # ----------
 
     data_file = f"""
-8000 atoms 
-7600 bonds
-7200 angles
+{(N_m) * N_p} atoms 
+{(N_m - 1) * N_p} bonds
+{(N_m - 2) * N_p} angles
 
 1 atom types
 1 bond types
