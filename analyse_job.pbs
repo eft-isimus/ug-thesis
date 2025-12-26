@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -N analyse_rho_var
+#PBS -l nodes=1:ppn=2
+#PBS -l walltime=00:10:00
+#PBS -l mem=2gb
+#PBS -q cpu
+#PBS -j oe
+
+cd $PBS_O_WORKDIR
+module load compiler/gcc-11.2.0
+module load compiler/python3.8   # or whatever module provides python on your HPC
+
+python3 analyse_new.py
