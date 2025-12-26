@@ -6,7 +6,7 @@
 #-----------------
 # Importing packages
 #-----------------
-# import sys
+import sys
 import numpy as np
 import ast
 from collections import defaultdict
@@ -16,20 +16,8 @@ import json
 inputs = json.loads(sys.argv[1])
 path   = sys.argv[2]
 
-# inputs = ast.literal_eval(input("Enter input parameters: "))
-# path = input("Enter path to directory in which to make inputs: ")
-
-#-----------------
-# Defining required functions
-#-----------------
-def make_grid(N, sep):
-    n = int(np.sqrt(N))
-    coords = (np.arange(n) - (n-1)/2) * sep
-    X, Y = np.meshgrid(coords, coords)
-    return np.column_stack([X.ravel(), Y.ravel()])
-
 # Example input:
-# inputs = system_inputs   = {'ad_strength':0, 'ad_cutoff': 2.5, 'm': 10000, 'polymer_seperation': 6, 'N_p': 64, 'N_m': 10, 'bond_length': 1.12246, 'k': 0, 'T':0.1, 'dt':0.001, 't_f':10000, 'm':10000, 'num_runs':10}
+# inputs = system_inputs   = {"ad_strength":0, "ad_cutoff": 2.5, "m": 10000, "polymer_seperation": 6, "N_p": 400, "N_m": 20, "bond_length": 1.12246, "k": 0, "T":0.1, "dt":0.001, "t_f":10000, "m":10000, "num_runs":1}
 
 def create_input_file(run_index, **kwargs):
     ad_strength        = kwargs.get('ad_strength', 1)          # NOTE: NOT NEEDED, only there due to laziness
@@ -38,114 +26,112 @@ def create_input_file(run_index, **kwargs):
     polymer_seperation = kwargs.get('polymer_seperation', 10)  # distance between a polymer and its 4 nearest neighbors
     N_p                = kwargs.get('N_p', 2)                  # total number of polymers
     N_m                = kwargs.get('N_m', 10)                 # number of monomers in each polymer
-    bond_length        = kwargs.get('bond_length', 2)          # bonds between successive monomers
+    bond_length        = kwargs.get('bond_length', 1)          # SET TO 1 ALWAYS
     box_len            = (np.sqrt(N_p)) * polymer_seperation   # calculating box length to make box
-    # box_len = (np.sqrt(N_p) + 1) * polymer_seperation  # calculating box length to make box
     m                  = kwargs.get('m', 10_000)
     # the box size needs to be such that the edge and corner polymers also see the same brush
     box = [[-box_len/2, box_len/2], [-box_len/2, box_len/2], [-5, 2*N_m*bond_length]]  # box size
-    # box = [[-box_len/2 - bond_length*N_m, box_len/2 + bond_length*N_m], 
-                # [-box_len/2 - bond_length*N_m, box_len/2 + bond_length*N_m], 
-                # [-5, 2*N_m*bond_length]]  # box size
     k   = kwargs.get('k', 0)                                                                     # stiffness of polymers
     rho = N_p/(box_len**2)                                                         # density of polymer brush
 
     # first set of commands define the units, styles, sim box, computes etc.
     commands1 = f"""
-    #---------------
-    # Basic attributes of the simulation
-    #---------------
-    units lj
-    atom_style molecular
-    boundary p p f
-    # boundary f f f
-    
-    dimension 3
-    region box block {box[0][0]} {box[0][1]} {box[1][0]} {box[1][1]} {box[2][0]} {box[2][1]}
-    create_box 1 box bond/types 1 angle/types 1 extra/bond/per/atom 2 extra/angle/per/atom 3 extra/special/per/atom 10
+#---------------
+# Basic attributes of the simulation
+#---------------
+units lj
+atom_style molecular
+boundary p p f    
+dimension 3
 
-    #---------------
-    # Bond, angle and pair styles
-    #---------------  
-    mass 1 1.0
-    
-    bond_style harmonic
-    bond_coeff 1 100.0 {bond_length}
+#---------------
+# Bond, angle and pair styles
+#---------------  
+bond_style fene
+angle_style cosine/squared
 
-    angle_style cosine/squared
-    angle_coeff 1 {k} 180.0
+# WCA potential (LJ 12-6 with diff. cutoff and shift)
+pair_style lj/cut {1.12246*sigma}                      # cutoff = 2^(1/6) sigma
+pair_modify shift yes                                       # shift the potential to remove discontinuity
 
-    # WCA potential (LJ 12-6 with diff. cutoff and shift)
-    pair_style lj/cut {1.12246*sigma}                      # cutoff = 2^(1/6) sigma
-    pair_modify shift yes                                       # shift the potential to remove discontinuity
-    pair_coeff 1 1 1.0 {sigma} {1.12246*sigma}        # set cutoff as 2^(1/6) sigma again
+read_data ../{N_m}Nm_{N_p}Np_{np.round(rho, decimals=4)}rho.data
 
-    #---------------
-    # Defining required computes
-    #---------------  
-    compute pe_all all pe
-    compute pe_pair all pe pair
-    compute pe_angle all pe angle
-    compute pe_bond all pe bond
-    # compute comp_ang polymer_atoms angle/local theta
+mass 1 1.0
+bond_coeff 1 30.0 1.5 1.0 1.0
+angle_coeff 1 {k} 180.0
+pair_coeff 1 1 1.0 {sigma} {1.12246*sigma}        # set cutoff as 2^(1/6) sigma again
 
-    """
+special_bonds fene
+
+#---------------
+# Defining required computes [to be used later]
+#---------------  
+# compute pe_all all pe
+# compute pe_pair all pe pair
+# compute pe_angle all pe angle
+# compute pe_bond all pe bond
+# compute comp_ang polymer_atoms angle/local theta
+
+"""
 
     # ----------
     # NOTE:*NEW* Code for creating required polymers
     # ----------
 
-    mol_file = f"""
-    # header section:
-{N_m} atoms
-{N_m - 1} bonds
-{N_m - 2} angles
+    data_file = f"""
+8000 atoms 
+7600 bonds
+7200 angles
 
-# body section:
-Coords
+1 atom types
+1 bond types
+1 angle types
 
-""" # empty string
+{box[0][0]} {box[0][1]} xlo xhi
+{box[1][0]} {box[1][1]} ylo yhi
+{box[2][0]} {box[2][1]} zlo zhi
+
+Atoms
+
+"""
+    for xi in range(int(np.sqrt(N_p))):
+        for yi in range(int(np.sqrt(N_p))):
+            x_coord = (xi * polymer_seperation) - ((int(np.sqrt(N_p)) - 1) * polymer_seperation)/2 # centers at 0
+            y_coord = (yi * polymer_seperation) - ((int(np.sqrt(N_p)) - 1) * polymer_seperation)/2 # centers at 0
+            mol_id = (xi * N_m + yi) + 1 # to ensure mol_id starts from 1 not 0
+
+            for atm in range(N_m):
+                z_coord = atm * bond_length
+                # atom-id mol-id type x y z
+                data_file += f"""{(mol_id - 1) * 20 + atm + 1} {mol_id} 1 {x_coord:.6f} {y_coord:.6f} {z_coord:.6f}\n"""
+
+    bond_count = N_p * (N_m - 1)
+    data_file += f"""\nBonds\n\n"""
+
+    bond_id = 1
+    for pol in range(N_p):
+        first_atom = pol * N_m
+        for bond in range(N_m - 1):
+            a1 = first_atom + bond + 1
+            a2 = first_atom + bond + 2
+            data_file += f"""{bond_id} 1 {a1} {a2}\n"""
+            bond_id += 1
+
+    data_file += f"""\nAngles\n\n"""
+    angle_id = 1
+    for pol in range(N_p):
+        first_atom = pol * N_m
+        for angle in range(N_m - 2):
+            a1 = first_atom + angle + 1
+            a2 = first_atom + angle + 2
+            a3 = first_atom + angle + 3
+            data_file += f"""{angle_id} 1 {a1} {a2} {a3}\n"""
+            angle_id += 1
     
-    for i in range(N_m):
-        mol_file += f"""{i + 1} 0.00000 0.00000 {np.round(i * bond_length, decimals=5)}
-"""
-    mol_file += f"""
-Bonds
-
-"""
-    for i in range(N_m - 1):
-        # id    type    atom_1  atom_2
-        mol_file += f"""{i + 1} 1 {i + 1} {i + 2}
-"""
-    mol_file += f"""
-Types
-
-"""
-    for i in range(N_m):
-        # id type
-        mol_file += f"""{i + 1} 1 
-"""    
-    mol_file += f"""
-Angles
-
-"""
-    for i in range(N_m - 2):
-        # ID type atom1 atom2 atom3        
-        mol_file += f"""{i + 1} 1 {i + 1} {i + 2} {i + 3}
-"""
-    with open(path + f"/{N_m}Nm_{N_p}Np_{np.round(rho, decimals=4)}rho.mol", "w") as f:
-        f.write(mol_file)
+    with open(path + f"/{N_m}Nm_{N_p}Np_{np.round(rho, decimals=4)}rho.data", "w") as f:
+        f.write(data_file)
     
-    commands2 = f"""molecule polymer ../{N_m}Nm_{N_p}Np_{np.round(rho, decimals=4)}rho.mol
-
-""" 
-
-    for i in range(int(np.sqrt(N_p))):
-        for j in range(int(np.sqrt(N_p))):
-            commands2 += f"""create_atoms 0 single {(i * polymer_seperation) - ((np.sqrt(N_p) - 1) * polymer_seperation)/2} {(j * polymer_seperation)  - ((np.sqrt(N_p) - 1) * polymer_seperation)/2} {((N_m - 1)*bond_length)/2} mol polymer 123456 rotate 0 0 0 1
-"""
-    
-    commands3 = f"""         
+    commands2 = f"""         
     # creating adsorption groups, plane and walls
     group base_atoms id 1:{N_p*N_m}:{N_m}                        # fixing all of the base atoms
     group mobile_atoms subtract all base_atoms # creating group of atoms which can move
@@ -154,7 +140,8 @@ Angles
     # fix wall all wall/lj93 zlo 0.0 {ad_strength} 1.0 {ad_cutoff}    # adsorption wall
     # fix_modify wall energy yes
 
-    fix zwall all wall/reflect zlo 0 zhi {2*N_m*bond_length}                                  # impenetrable wall
+    # fix zwall all wall/reflect zlo 0 zhi {2*N_m*bond_length}                                  # impenetrable wall
+    fix zwall all wall/reflect zlo 0 zhi {2*N_m*1.5}                                  # 1.5 is the max length of a bond in FENE
     
     """
 
@@ -163,13 +150,11 @@ Angles
     t_f = kwargs.get('t_f', 0.0001)
     m = kwargs.get('m', 1000)
 
-    commands4 = f"""
+    commands3 = f"""
     # for post-processing in python
     dump 1 all custom {m} {N_m}Nm_{N_p}Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri.poly id mol type x y z    
     # for dumping atom coords in a sensible order (id 1, 2, 3, ...)
     dump_modify 1 sort id                           
-    # dump 2 all custom {m} {N_m}Nm_{N_p}Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri.lammpstrj id type x y z
-    # dump_modify 2 sort id
     velocity all create {T} {np.random.randint(100_000, 999_999)} mom yes rot yes          # random seed = statistically ind. runs
     neighbor 1.0 bin
     neigh_modify delay 100 every 5 check yes                                                      # hard requirement for minimize
@@ -187,7 +172,7 @@ Angles
     run {int(t_f/dt)}
     """
 
-    string = commands1 + commands2 + commands3 + commands4
+    string = commands1 + commands2 + commands3
     
     with open(path + f"/{N_m}Nm_{N_p}Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri_input.sim", "w") as f:
         f.write(string)
@@ -196,3 +181,4 @@ Angles
 
 for i in range(int(inputs['num_runs'])):
     create_input_file(i + 1, **inputs)
+
