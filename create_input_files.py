@@ -103,7 +103,7 @@ Atoms
             for atm in range(N_m):
                 z_coord = atm * bond_length
                 # atom-id mol-id type x y z
-                data_file += f"""{(mol_id - 1) * 20 + atm + 1} {mol_id} 1 {x_coord:.6f} {y_coord:.6f} {z_coord:.6f}\n"""
+                data_file += f"""{(mol_id - 1) * {N_m} + atm + 1} {mol_id} 1 {x_coord:.6f} {y_coord:.6f} {z_coord:.6f}\n"""
 
     bond_count = N_p * (N_m - 1)
     data_file += f"""\nBonds\n\n"""
