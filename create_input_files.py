@@ -94,17 +94,18 @@ special_bonds fene
 Atoms
 
 """
+    mol_id = 1
     for xi in range(int(np.sqrt(N_p))):
         for yi in range(int(np.sqrt(N_p))):
             x_coord = (xi * polymer_seperation) - ((int(np.sqrt(N_p)) - 1) * polymer_seperation)/2 # centers at 0
             y_coord = (yi * polymer_seperation) - ((int(np.sqrt(N_p)) - 1) * polymer_seperation)/2 # centers at 0
-            mol_id = (xi * N_m + yi) + 1 # to ensure mol_id starts from 1 not 0
+#            mol_id = (xi * N_m + yi) + 1 # to ensure mol_id starts from 1 not 0
 
             for atm in range(N_m):
                 z_coord = atm * bond_length
                 # atom-id mol-id type x y z
-                data_file += f"""{(mol_id - 1) * {N_m} + atm + 1} {mol_id} 1 {x_coord:.6f} {y_coord:.6f} {z_coord:.6f}\n"""
-
+                data_file += f"""{(mol_id - 1) * N_m + atm + 1} {mol_id} 1 {x_coord:.6f} {y_coord:.6f} {z_coord:.6f}\n"""
+            mol_id += 1
     bond_count = N_p * (N_m - 1)
     data_file += f"""\nBonds\n\n"""
 
@@ -168,6 +169,11 @@ Atoms
     fix freeze_force base_atoms setforce 0.0 0.0 0.0
     fix_modify freeze_force energy no
     velocity base_atoms set 0.0 0.0 0.0
+    compute blen all bond/local dist
+    compute avg_blen all reduce ave c_blen
+
+    fix blen_out all ave/time 50000 1 50000 c_avg_blen file avg_bond_length.dat
+
     restart {int(t_f/(dt*10))} {N_m}Nm_{N_p}Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri_restart.bin # creates restart files every tenth of the way
     run {int(t_f/dt)}
     """
