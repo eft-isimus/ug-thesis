@@ -12,8 +12,8 @@ for dir in */; do
         cat > job.pbs <<EOF
 #!/bin/bash
 #PBS -N ${main_dir//\//_}_${dir%/}
-#PBS -l nodes=2:ppn=4
-#PBS -l walltime=30:00:00
+#PBS -l nodes=1:ppn=8
+#PBS -l walltime=15:00:00
 #PBS -l mem=4gb
 #PBS -l host=compute${comp_node}
 #PBS -q cpu
