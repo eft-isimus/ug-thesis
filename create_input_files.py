@@ -251,7 +251,7 @@ group base_atoms type 2 4                        # fixing all of the base atoms
 # creating adsorption groups, plane and walls
 group base_atoms type 2                        # fixing all of the base atoms 
 """     
-    commands2 += """
+    commands2 += f"""
 group mobile_atoms subtract all base_atoms # creating group of atoms which can move
 
 # no adsorption plane for now                                                                
