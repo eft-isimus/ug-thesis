@@ -143,7 +143,10 @@ Atoms
     if mixed:
         choice_array = [0]*N_p[0] + [1]*N_p[1]
         np.random.shuffle(choice_array)
-    
+        # create a sequence file to store which polymer is long
+        with open(path + f"/{N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho.seq", "w") as f:
+                f.write(f'{choice_array}')
+
     mol_id = 1
     atom_id = 1
     for xi in range(int(np.sqrt(total_N_p))):
