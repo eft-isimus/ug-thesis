@@ -25,6 +25,9 @@ def create_input_file(run_index, **kwargs):
     bond_length        = kwargs.get('bond_length', 1)          # SET TO 1 ALWAYS
     m                  = kwargs.get('m', 10_000)
     mixed              = kwargs.get('mixed', False)
+    T                  = kwargs.get('T', 0)
+    dt                 = kwargs.get('dt', 0.0001)
+    t_f                = kwargs.get('t_f', 0.0001)
     
     # 1 = mixed, 0 = not mixed
     if mixed == 1:
@@ -33,6 +36,7 @@ def create_input_file(run_index, **kwargs):
         mixed = False
     total_N_p          = np.sum(N_p)
     box_len            = (np.sqrt(total_N_p)) * polymer_seperation   # calculating box length to make box
+    rho                = total_N_p/(box_len**2)   # density of polymer brush
     
     if not mixed:
         n_m = N_m[0] # for convenience when the brush is not mixed
@@ -49,7 +53,6 @@ def create_input_file(run_index, **kwargs):
     # the box size needs to be such that the edge and corner polymers also see the same brush
     box = [[-box_len/2, box_len/2], [-box_len/2, box_len/2], [-5, 1.2*np.max(N_m)*bond_length]]  # box size
     k   = kwargs.get('k', 0)                                                                     # stiffness of polymers
-    rho = total_N_p/(box_len**2)   # density of polymer brush
 
     # first set of commands define the units, styles, sim box, computes etc.
     commands1 = f"""
@@ -257,9 +260,6 @@ fix zwall all wall/reflect zlo 0 zhi {1.2*np.max(N_m)*1.5}                      
 
     """
 
-    T = kwargs.get('T', 0)
-    dt = kwargs.get('dt', 0.0001)
-    t_f = kwargs.get('t_f', 0.0001)
     m = kwargs.get('m', 1000)
 
     commands3 = f"""
