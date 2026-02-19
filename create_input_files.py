@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-#=================
-# Input file creation script
-#=================
-
 #-----------------
 # Importing packages
 #-----------------
@@ -40,8 +36,16 @@ def create_input_file(run_index, **kwargs):
     
     if not mixed:
         n_m = N_m[0] # for convenience when the brush is not mixed
-
-
+        
+    if mixed:
+        common_prefix = f'{N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho'
+    elif not mixed:
+        common_prefix = f'{N_m[0]}_Nm_{N_p[0]}_Np_{np.round(rho, decimals=4)}rho'
+    data_filename = f'{common_prefix}.data'
+    seq_filename = f'{common_prefix}.seq'
+    input_filename = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri_input.sim'
+    dump_filename = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri.poly'
+    
     # the box size needs to be such that the edge and corner polymers also see the same brush
     box = [[-box_len/2, box_len/2], [-box_len/2, box_len/2], [-5, 1.2*np.max(N_m)*bond_length]]  # box size
     k   = kwargs.get('k', 0)                                                                     # stiffness of polymers
@@ -67,12 +71,8 @@ angle_style cosine/squared
 pair_style lj/cut {1.12246*sigma}                      # cutoff = 2^(1/6) sigma
 pair_modify shift yes                                       # shift the potential to remove discontinuity
 """
-    if mixed:
-        commands1 += f"""
-read_data ../{N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho.data"""
-    elif not mixed:
-        commands1 += f"""
-read_data ../{N_m[0]}_Nm_{N_p[0]}_Np_{np.round(rho, decimals=4)}rho.data"""
+    commands1 += f"""
+read_data ../{data_filename}"""
 
     if mixed:
         commands1 += """
@@ -93,7 +93,6 @@ bond_coeff 1 30.0 1.5 1.0 1.0
 angle_coeff 1 {k} 180.0
 pair_coeff * * 1.0 {sigma} {1.12246*sigma}        # set cutoff as 2^(1/6) sigma again
 
-
 special_bonds fene
 
 #---------------
@@ -106,11 +105,6 @@ special_bonds fene
 # compute comp_ang polymer_atoms angle/local theta
 
 """
-
-    # ----------
-    # NOTE:*NEW* Code for creating required polymers
-    # ----------
-
     data_file = f"""
 {np.sum(N_m * N_p)} atoms 
 {np.sum((N_m - 1) * N_p)} bonds
@@ -144,7 +138,7 @@ Atoms
         choice_array = [0]*N_p[0] + [1]*N_p[1]
         np.random.shuffle(choice_array)
         # create a sequence file to store which polymer is long
-        with open(path + f"/{N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho.seq", "w") as f:
+        with open(path + f"/{seq_filename}", "w") as f:
                 f.write(f'{choice_array}')
 
     mol_id = 1
@@ -238,12 +232,9 @@ Atoms
                 angle_id += 1
             mol_id += 1
             first_atom += num_monomers
-    if mixed:
-        with open(path + f"/{N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho.data", "w") as f:
-            f.write(data_file)
-    elif not mixed:
-        with open(path + f"/{N_m[0]}_Nm_{N_p[0]}_Np_{np.round(rho, decimals=4)}rho.data", "w") as f:
-            f.write(data_file)
+    with open(path + f"/{data_filename}", "w") as f:
+        f.write(data_file)
+    
     if mixed:
         commands2 = f"""         
 # creating adsorption groups, plane and walls
@@ -271,53 +262,29 @@ fix zwall all wall/reflect zlo 0 zhi {1.2*np.max(N_m)*1.5}                      
     t_f = kwargs.get('t_f', 0.0001)
     m = kwargs.get('m', 1000)
 
-    if mixed:
-        commands3 = f"""
-# for post-processing in python
-dump 1 all custom {m} {N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri.poly id mol type x y z    
-    """
-    elif not mixed:
-        commands3 = f""" 
-# for post-processing in python
-dump 1 all custom {m} {N_m[0]}_Nm_{N_p[0]}_Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri.poly id mol type x y z    
-"""
-    commands3 += f"""
-# for dumping atom coords in a sensible order (id 1, 2, 3, ...)
-dump_modify 1 sort id                           
+    commands3 = f"""
+dump 1 all custom {m} {dump_filename} id mol type x y z                                # for post-processing in python
+dump_modify 1 sort id                                                                  # for dumping atom coords in a sensible order (id 1, 2, 3, ...)
 velocity all create {T} {np.random.randint(100_000, 999_999)} mom yes rot yes          # random seed = statistically ind. runs
 neighbor 1.0 bin
-neigh_modify delay 100 every 5 check yes                                                      # hard requirement for minimize
+neigh_modify delay 100 every 5 check yes                                               # hard requirement for minimize
 comm_modify cutoff 3.0
 timestep {dt}
 
-fix 1 all langevin {T} {T} {100*dt} {np.random.randint(100_000, 999_999)}    # random seed = statistically ind. runs
+fix 1 all langevin {T} {T} {100*dt} {np.random.randint(100_000, 999_999)}              # random seed = statistically ind. runs
 fix 2 all nve
 
-# fix just the base atoms to always be attached
-fix freeze_force base_atoms setforce 0.0 0.0 0.0
+fix freeze_force base_atoms setforce 0.0 0.0 0.0                                       # fix just the base atoms to always be attached
 fix_modify freeze_force energy no
-velocity base_atoms set 0.0 0.0 0.0"""
-
-    if mixed:
-        commands3 += f"""
-restart {int(t_f/(dt*10))} {N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri_restart.bin # creates restart files every tenth of the way
-run {int(t_f/dt)}
-    """
-    elif not mixed:
-        commands3 += f"""
-restart {int(t_f/(dt*10))} {N_m[0]}_Nm_{N_p[0]}_Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri_restart.bin # creates restart files every tenth of the way
+velocity base_atoms set 0.0 0.0 0.0
+restart {int(t_f/(dt*10))} {common_prefix}_{T}T_{t_f}tf_{run_index}ri_restart.bin # creates restart files every tenth of the way
 run {int(t_f/dt)}
     """
         
     string = commands1 + commands2 + commands3
     
-    if mixed:
-        with open(path + f"/{N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri_input.sim", "w") as f:
-            f.write(string)
-    elif not mixed:
-        with open(path + f"/{N_m[0]}_Nm_{N_p[0]}_Np_{np.round(rho, decimals=4)}rho_{T}T_{t_f}tf_{run_index}ri_input.sim", "w") as f:
-            f.write(string)
-    # return string
-
+    with open(path + f"/{input_filename}", "w") as f:
+        f.write(string)
+    
 for i in range(int(inputs['num_runs'])):
     create_input_file(i + 1, **inputs)
