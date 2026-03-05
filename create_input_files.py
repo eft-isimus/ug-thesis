@@ -30,6 +30,7 @@ def create_input_file(run_index, **kwargs):
     t_f                = kwargs.get('t_f', 0.0001)
     t_eq               = kwargs.get('t_eq', t_f * 0.2)         # default 20% of total time for eq
     m_eq               = kwargs.get('m_eq', kwargs.get('m', 10000) * 10) # default 10x lower frequency
+    dz                 = kwargs.get('dz', 0.2)                 # bin size (delta z) for native density profile
     
     # 1 = mixed, 0 = not mixed
     if mixed == 1:
@@ -52,6 +53,8 @@ def create_input_file(run_index, **kwargs):
     input_filename = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri_input.sim'
     dump_filename_eq = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri_eq.poly'
     dump_filename = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri.poly'
+    early_density_filename = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri_early.profile'
+    prod_density_filename = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri_prod.profile'
     
     # the box size needs to be such that the edge and corner polymers also see the same brush
     box = [[-box_len/2, box_len/2], [-box_len/2, box_len/2], [-5, 1.2*np.max(N_m)*bond_length]]  # box size
@@ -265,6 +268,10 @@ fix zwall all wall/reflect zlo 0 zhi {1.2*np.max(N_m)*1.5}                      
 
     m = kwargs.get('m', 1000)
 
+    # Calculate step counts ensuring they are perfect multiples of 10 for accurately rolling averaging dumps
+    steps_eq = (int(t_eq/dt) // 10) * 10
+    steps_prod = (int((t_f - t_eq)/dt) // 10) * 10
+
     commands3 = f"""
 velocity all create {T} {np.random.randint(100_000, 999_999)} mom yes rot yes          # random seed = statistically ind. runs
 neighbor 1.0 bin
@@ -280,16 +287,28 @@ fix_modify freeze_force energy no
 velocity base_atoms set 0.0 0.0 0.0
 restart {int(t_f/(dt*10))} {common_prefix}_{T}T_{t_f}tf_{run_index}ri_restart.bin # creates restart files every tenth of the way
 
+# Compute 1D chunk grid mapping to compute density along Z
+compute zchunks all chunk/atom bin/1d z lower {dz} units box
+
 # Equilibration phase (low resolution dump)
 dump 1 all custom {m_eq} {dump_filename_eq} id mol type x y z
 dump_modify 1 sort id
-run {int(t_eq/dt)}
+
+# Early density profile (running average for equilibration phase)
+fix early_density all ave/chunk 10 1 {steps_eq if steps_eq > 0 else 10} zchunks density/number ave running file {early_density_filename}
+
+run {steps_eq}
+unfix early_density
 
 # Production phase (high resolution dump)
 undump 1
 dump 1 all custom {m} {dump_filename} id mol type x y z
 dump_modify 1 sort id
-run {int((t_f - t_eq)/dt)}
+
+# Production density profile (running average for entire production phase)
+fix prod_density all ave/chunk 10 1 {steps_prod if steps_prod > 0 else 10} zchunks density/number ave running file {prod_density_filename}
+
+run {steps_prod}
     """
         
     string = commands1 + commands2 + commands3
