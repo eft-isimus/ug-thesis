@@ -28,6 +28,8 @@ def create_input_file(run_index, **kwargs):
     T                  = kwargs.get('T', 0)
     dt                 = kwargs.get('dt', 0.0001)
     t_f                = kwargs.get('t_f', 0.0001)
+    t_eq               = kwargs.get('t_eq', t_f * 0.2)         # default 20% of total time for eq
+    m_eq               = kwargs.get('m_eq', kwargs.get('m', 10000) * 10) # default 10x lower frequency
     
     # 1 = mixed, 0 = not mixed
     if mixed == 1:
@@ -48,6 +50,7 @@ def create_input_file(run_index, **kwargs):
     data_filename = f'{common_prefix}.data'
     seq_filename = f'{common_prefix}.seq'
     input_filename = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri_input.sim'
+    dump_filename_eq = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri_eq.poly'
     dump_filename = f'{common_prefix}_{T}T_{t_f}tf_{run_index}ri.poly'
     
     # the box size needs to be such that the edge and corner polymers also see the same brush
@@ -263,8 +266,6 @@ fix zwall all wall/reflect zlo 0 zhi {1.2*np.max(N_m)*1.5}                      
     m = kwargs.get('m', 1000)
 
     commands3 = f"""
-dump 1 all custom {m} {dump_filename} id mol type x y z                                # for post-processing in python
-dump_modify 1 sort id                                                                  # for dumping atom coords in a sensible order (id 1, 2, 3, ...)
 velocity all create {T} {np.random.randint(100_000, 999_999)} mom yes rot yes          # random seed = statistically ind. runs
 neighbor 1.0 bin
 neigh_modify delay 100 every 5 check yes                                               # hard requirement for minimize
@@ -278,7 +279,17 @@ fix freeze_force base_atoms setforce 0.0 0.0 0.0                                
 fix_modify freeze_force energy no
 velocity base_atoms set 0.0 0.0 0.0
 restart {int(t_f/(dt*10))} {common_prefix}_{T}T_{t_f}tf_{run_index}ri_restart.bin # creates restart files every tenth of the way
-run {int(t_f/dt)}
+
+# Equilibration phase (low resolution dump)
+dump 1 all custom {m_eq} {dump_filename_eq} id mol type x y z
+dump_modify 1 sort id
+run {int(t_eq/dt)}
+
+# Production phase (high resolution dump)
+undump 1
+dump 1 all custom {m} {dump_filename} id mol type x y z
+dump_modify 1 sort id
+run {int((t_f - t_eq)/dt)}
     """
         
     string = commands1 + commands2 + commands3
