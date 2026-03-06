@@ -4,9 +4,6 @@
 #-----------------
 import sys
 import numpy as np
-import ast
-from collections import defaultdict
-import sys
 import json
 
 inputs = json.loads(sys.argv[1])
@@ -33,10 +30,7 @@ def create_input_file(run_index, **kwargs):
     dz                 = kwargs.get('dz', 0.2)                 # bin size (delta z) for native density profile
     
     # 1 = mixed, 0 = not mixed
-    if mixed == 1:
-        mixed = True
-    else:
-        mixed = False
+    mixed = bool(mixed)
     total_N_p          = np.sum(N_p)
     box_len            = (np.sqrt(total_N_p)) * polymer_seperation   # calculating box length to make box
     rho                = total_N_p/(box_len**2)   # density of polymer brush
@@ -46,7 +40,7 @@ def create_input_file(run_index, **kwargs):
         
     if mixed:
         common_prefix = f'{N_m[0]}_{N_m[1]}_Nm_{N_p[0]}_{N_p[1]}_Np_{np.round(rho, decimals=4)}rho'
-    elif not mixed:
+    else:
         common_prefix = f'{N_m[0]}_Nm_{N_p[0]}_Np_{np.round(rho, decimals=4)}rho'
     data_filename = f'{common_prefix}.data'
     seq_filename = f'{common_prefix}.seq'
@@ -91,7 +85,7 @@ mass 3 1.0
 mass 4 1.0
 
 """
-    if not mixed:
+    else:
         commands1 += """
 mass 1 1.0
 mass 2 1.0
@@ -128,7 +122,7 @@ special_bonds fene
 """
 
 # need 4 atom types for mixed brushes, two for base atoms and two for non-base atoms
-    elif mixed:
+    else:
          data_file += f""" 
 4 atom types
 1 bond types
@@ -170,7 +164,7 @@ Atoms
                 mol_id += 1
             
             # pol-1 = 1, base-atom-1 = 2, pol-2 = 3, base-2 = 4
-            if mixed:
+            else:
                 num_monomers = N_m[choice_array[mol_id - 1]]
                 if num_monomers == N_m[0]:
                     for atm in range(num_monomers):
@@ -207,7 +201,7 @@ Atoms
                 data_file += f"""{bond_id} 1 {a1} {a2}\n"""
                 bond_id += 1
             mol_id += 1
-        if mixed:
+        else:
             num_monomers = N_m[choice_array[mol_id - 1]]
             for bond in range(num_monomers - 1):
                 a1 = first_atom + bond 
@@ -231,7 +225,7 @@ Atoms
                 data_file += f"""{angle_id} 1 {a1} {a2} {a3}\n"""
                 angle_id += 1
             mol_id += 1
-        if mixed:
+        else:
             num_monomers = N_m[choice_array[mol_id - 1]]
             for angle in range(num_monomers - 2):
                 a1 = first_atom + angle 
@@ -249,7 +243,7 @@ Atoms
 # creating adsorption groups, plane and walls
 group base_atoms type 2 4                        # fixing all of the base atoms 
 """
-    elif not mixed:
+    else:
         commands2 = f"""         
 # creating adsorption groups, plane and walls
 group base_atoms type 2                        # fixing all of the base atoms 
@@ -265,8 +259,6 @@ group mobile_atoms subtract all base_atoms # creating group of atoms which can m
 fix zwall all wall/reflect zlo 0 zhi {1.2*np.max(N_m)*1.5}                                  # 1.5 is the max length of a bond in FENE
 
     """
-
-    m = kwargs.get('m', 1000)
 
     # Calculate step counts ensuring they are perfect multiples of 10 for accurately rolling averaging dumps
     steps_eq = (int(t_eq/dt) // 10) * 10
