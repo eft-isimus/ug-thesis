@@ -4,3 +4,5 @@
 !setup.sh
 !make_jobs.sh
 !move_files.sh
+!single_seed_analysis.py
+!combine_seed_results.py
