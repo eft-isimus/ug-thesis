@@ -6,3 +6,4 @@
 !move_files.sh
 !single_seed_analysis.py
 !combine_seed_results.py
+!create_jobdirs_file.sh
