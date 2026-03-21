@@ -23,6 +23,7 @@ def create_input_file(run_index, **kwargs):
     m                  = kwargs.get('m', 10_000)
     mixed              = kwargs.get('mixed', False)
     T                  = kwargs.get('T', 0)
+    k                  = kwargs.get('k', [0])                                                                     # stiffness of polymers
     dt                 = kwargs.get('dt', 0.0001)
     t_f                = kwargs.get('t_f', 0.0001)
     t_eq               = kwargs.get('t_eq', t_f * 0.2)         # default 20% of total time for eq
@@ -52,7 +53,6 @@ def create_input_file(run_index, **kwargs):
     
     # the box size needs to be such that the edge and corner polymers also see the same brush
     box = [[-box_len/2, box_len/2], [-box_len/2, box_len/2], [-5, 1.2*np.max(N_m)*bond_length]]  # box size
-    k   = kwargs.get('k', 0)                                                                     # stiffness of polymers
 
     # first set of commands define the units, styles, sim box, computes etc.
     commands1 = f"""
@@ -91,9 +91,17 @@ mass 1 1.0
 mass 2 1.0
 
 """
+    if mixed:
+        commands1 += f"""
+angle_coeff 1 {k[0]} 180.0
+angle_coeff 2 {k[1]} 180.0
+"""
+    else:
+        commands1 += f"""
+angle_coeff 1 {k[0]} 180.0
+"""
     commands1 += f"""
 bond_coeff 1 30.0 1.5 1.0 1.0
-angle_coeff 1 {k} 180.0
 pair_coeff * * 1.0 {sigma} {1.12246*sigma}        # set cutoff as 2^(1/6) sigma again
 
 special_bonds fene
@@ -126,7 +134,7 @@ special_bonds fene
          data_file += f""" 
 4 atom types
 1 bond types
-1 angle types
+2 angle types
 """
 
     data_file += f"""
@@ -227,11 +235,16 @@ Atoms
             mol_id += 1
         else:
             num_monomers = N_m[choice_array[mol_id - 1]]
+            # checking if this is a long or a short polymer
+            if choice_array[mol_id - 1] == 1:
+                angle_type = 2
+            else:
+                angle_type = 1
             for angle in range(num_monomers - 2):
                 a1 = first_atom + angle 
                 a2 = first_atom + angle + 1
                 a3 = first_atom + angle + 2
-                data_file += f"""{angle_id} 1 {a1} {a2} {a3}\n"""
+                data_file += f"""{angle_id} {angle_type} {a1} {a2} {a3}\n"""
                 angle_id += 1
             mol_id += 1
             first_atom += num_monomers
