@@ -17,13 +17,13 @@ def create_input_file(run_index, **kwargs):
     ad_cutoff          = kwargs.get('ad_cutoff', 2.5)          # NOTE: NOT NEEDED, only there due to laziness
     sigma              = kwargs.get('sigma', 1)                # size of monomers
     polymer_seperation = kwargs.get('polymer_seperation', 10)  # distance between a polymer and its 4 nearest neighbors
-    N_p                = kwargs.get('N_p', 4)                  # list of number of polymers of each type [small to large]
+    N_p                = np.array(kwargs.get('N_p', 4))                  # list of number of polymers of each type [small to large]
     N_m                = np.array(kwargs.get('N_m', [10]))     # list of number of monomers in each polymer [small to large]
     bond_length        = kwargs.get('bond_length', 1)          # SET TO 1 ALWAYS
     m                  = kwargs.get('m', 10_000)
     mixed              = kwargs.get('mixed', False)
     T                  = kwargs.get('T', 0)
-    k                  = kwargs.get('k', [0])                                                                     # stiffness of polymers
+    k                  = np.array(kwargs.get('k', [0]))                                                                     # stiffness of polymers
     dt                 = kwargs.get('dt', 0.0001)
     t_f                = kwargs.get('t_f', 0.0001)
     t_eq               = kwargs.get('t_eq', t_f * 0.2)         # default 20% of total time for eq
