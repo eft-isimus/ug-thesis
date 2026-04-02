@@ -16,7 +16,7 @@ for dir in */; do
 #----------------------
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import ast
 import sys
 
@@ -27,7 +27,7 @@ par_dir_name    = par_dir.split('/')[-1]
 
 seq_files = [file for file in os.listdir(par_dir) if file.endswith('.seq')]
 mixed = bool(len(seq_files))
-seq_file = seq_files[0]
+seq_file = os.path.join(par_dir, seq_files[0])
 if mixed:
     with open(seq_file, 'r') as f:
         seq = f.readlines()
@@ -112,6 +112,7 @@ cd \$PBS_O_WORKDIR
 module load compiler/gcc-12.0
 module load compiler/openmpi-3.1.6
 module load apps/lammps-stable_2Aug2023
+module load compiler/python3.8
 mpirun -np 4 lmp_mpi < $simfile
 python3 single_seed_analysis.py
 EOF
