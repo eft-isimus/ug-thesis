@@ -209,27 +209,28 @@ group base_atoms type 2 4                        # fixing all of the base atoms
     else:
         commands2 = f"""         
 # creating adsorption groups, plane and walls
-group base_atoms type 2                        # fixing all of the base atoms 
+group base_atoms type 2                     # fixing all of the base atoms 
 """     
     commands2 += f"""
-group mobile_atoms subtract all base_atoms # creating group of atoms which can move
+group mobile_atoms subtract all base_atoms  # creating group of atoms which can move
 
-fix zwall all wall/reflect zlo 0 zhi {np.max(N_m) * bond_length + 2*virus_sigma}                                  # impenetrable wall to keep viruses from diffusing
-# fix zwall all wall/reflect zlo 0 zhi {1.2*np.max(N_m)*1.5}                                  # 1.5 is the max length of a bond in FENE
+fix zwall all wall/reflect zlo 0 zhi {np.max(N_m) * bond_length + 2*virus_sigma}  # impenetrable wall to keep viruses from diffusing
+# fix zwall all wall/reflect zlo 0 zhi {1.2*np.max(N_m)*1.5}                      # 1.5 is the max length of a bond in FENE
 
     """
     if mixed:
         commands2 += f"""
-group virus_atoms type 5 # creating group of virus atoms
+group virus_atoms type 5  # creating group of virus atoms
 """
 
-    elif not mixed:
+    elif not mixed: 
         commands2 += f"""
-group virus_atoms type 3 # creating group of virus atoms
+group virus_atoms type 3  # creating group of virus atoms
 """
 
     commands2 += f"""
-fix wall virus_atoms wall/lj93 zlo 0.0 {ad_strength} {virus_sigma} {ad_cutoff}    # adsorption wall
+fix wall virus_atoms wall/lj93 zlo 0.0 {ad_strength} {morse_r0} {ad_cutoff}  # adsorption wall
+fix zwall virus_atoms wall/reflect zhi {virus_height + 2*morse_r0}           # wall to prevent diffusion of viruses
 fix_modify wall energy yes
 """
 
