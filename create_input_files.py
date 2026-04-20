@@ -525,5 +525,5 @@ run {steps_prod}
 
 num_runs = inputs.get('num_runs', 1)
 
-for run_index in range(num_runs):
+for run_index in range(1, num_runs+1):
     create_input_file(run_index, **inputs)
