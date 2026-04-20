@@ -522,3 +522,8 @@ run {steps_prod}
     
     with open(path + f"/{input_filename}", "w") as f:
         f.write(string)
+
+num_runs = inputs.get('num_runs', 1)
+
+for run_index in range(num_runs):
+    create_input_file(run_index, **inputs)
