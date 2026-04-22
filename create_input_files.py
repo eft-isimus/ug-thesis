@@ -120,7 +120,7 @@ pair_modify shift yes
 """
     if input_data != None:
         commands1 += f"""
-read_data ../{input_data} extra/atom/types 1
+read_data ../{input_data} extra/atom/types 1 extra/angle/types 1 extra/bond/types 1
 read_dump ./{eq_snapshot} 0 x y z
 """ #NOTE: temporary, only for testing rn, CHANGE LATER
         if mixed:
