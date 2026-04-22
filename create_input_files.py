@@ -464,6 +464,7 @@ group virus_atoms type 3 # creating group of virus atoms
     if virus_number > 0:
         commands2 += f"""
 fix wall virus_atoms wall/lj93 zlo 0.0 {ad_strength} {virus_sigma} {ad_cutoff}    # adsorption wall
+fix wall virus_atoms wall/reflect zhi {virus_height + 2*virus_sigma}    # adsorption wall
 fix_modify wall energy yes
 """
 
