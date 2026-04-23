@@ -13,21 +13,30 @@ path   = sys.argv[2]
 # "N_p": [12, 4], "N_m": [20, 40], "bond_length": 1.12246, "k": 0, "T":0.1, "dt":0.001, "t_f":100, 
 # "m":10000, "num_runs":1, "mixed":1, "t_eq":50}
 
-def calculate_virus_positions(total_N_p, polymer_seperation, n_viruses):
+def calculate_virus_positions(total_N_p, polymer_seperation, n_viruses, spacing, virus_sigma):
     grid_size = int(np.sqrt(total_N_p))
     box_len = grid_size * polymer_seperation
     
-    # Define 4 equi-spaced positions on the grid
-    # These are at 1/4 and 3/4 positions in both x and y directions
-    qs = box_len / 4 # the quarter-spacing
-    positions_4 = [
-        (-qs, -qs),  # bottom-left quadrant
-        (qs, -qs),   # bottom-right quadrant
-        (-qs, qs),   # top-left quadrant
-        (qs, qs)  ]  # top-right quadrant
+    # center-to-center distance between viruses
+    cc_dist = 2*virus_sigma + spacing
     
-    # Return only the requested number of positions
-    return positions_4[:n_viruses]
+    # grid dimensions needed to hold n_viruses
+    n_cols = int(np.ceil(np.sqrt(n_viruses)))
+    n_rows = n_cols  # square grid
+    
+    if n_cols * cc_dist > box_len:
+        raise ValueError(f"Virus grid ({n_cols} x {cc_dist:.2f} = {n_cols*cc_dist:.2f}) exceeds box length ({box_len:.2f})")
+    
+    positions = []
+    for row in range(n_rows):
+        for col in range(n_cols):
+            if len(positions) >= n_viruses:
+                break
+            x = (col - (n_cols - 1) / 2) * cc_dist
+            y = (row - (n_rows - 1) / 2) * cc_dist
+            positions.append((x, y))
+    
+    return positions
 
 def create_input_file(run_index, **kwargs):
     ad_strength        = kwargs.get('ad_strength', 10)          # for virus adsorption onto grafting plane
@@ -124,12 +133,11 @@ read_data ../{input_data} extra/atom/types 1 extra/angle/types 1
 read_dump ./{eq_snapshot} 0 x y z
 """ #NOTE: temporary, only for testing rn, CHANGE LATER
         if mixed:
+            for virus in range(virus_number):
+                commands1 += f"""
+create_atoms 5 single {virus_positions[virus][0]} {virus_positions[virus][1]} {virus_height}"""
+                
             commands1 += f"""
-create_atoms 5 single {virus_positions[0][0]} {virus_positions[0][1]} {virus_height}
-create_atoms 5 single {virus_positions[1][0]} {virus_positions[1][1]} {virus_height}
-create_atoms 5 single {virus_positions[2][0]} {virus_positions[2][1]} {virus_height}
-create_atoms 5 single {virus_positions[3][0]} {virus_positions[3][1]} {virus_height}
-
 mass 1 1.0
 mass 2 1.0
 mass 3 1.0
@@ -139,11 +147,11 @@ mass 5 1.0
 """
         
         elif not mixed:
+            for virus in range(virus_number):
+                commands1 += f"""
+create_atoms 3 single {virus_positions[virus][0]} {virus_positions[virus][1]} {virus_height}"""
+
             commands1 += f"""
-create_atoms 3 single {virus_positions[0][0]} {virus_positions[0][1]} {virus_height}
-create_atoms 3 single {virus_positions[1][0]} {virus_positions[1][1]} {virus_height}
-create_atoms 3 single {virus_positions[2][0]} {virus_positions[2][1]} {virus_height}
-create_atoms 3 single {virus_positions[3][0]} {virus_positions[3][1]} {virus_height}
 
 mass 1 1.0
 mass 2 1.0
@@ -463,9 +471,9 @@ group virus_atoms type 3 # creating group of virus atoms
 
     if virus_number > 0:
         commands2 += f"""
-fix wall virus_atoms wall/lj93 zlo 0.0 {ad_strength} {virus_sigma} {ad_cutoff}    # adsorption wall
-fix wall virus_atoms wall/reflect zhi {virus_height + 2*virus_sigma}    # adsorption wall
-fix_modify wall energy yes
+fix wall_v_ad virus_atoms wall/lj93 zlo 0.0 {ad_strength} {virus_sigma} {ad_cutoff}    # adsorption wall
+fix wall_v_ref virus_atoms wall/reflect zhi {virus_height + 2*virus_sigma}    # adsorption wall
+# fix_modify wall energy yes
 """
 
     # Calculate step counts ensuring they are perfect multiples of 10 for accurately rolling averaging dumps
