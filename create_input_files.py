@@ -56,7 +56,7 @@ def create_input_file(run_index, **kwargs):
     dz                 = kwargs.get('dz', 0.2)                 # bin size (delta z) for native density profile
 
     virus_height       = kwargs.get('virus_height', 50)        # height at which the viruses are added
-    virus_sigma        = kwargs.get('virus_sigma', 50)         # size of the virus (for virus-virus repulsion)
+    virus_sigma        = kwargs.get('virus_sigma', morse_r0)         # size of the virus (for virus-virus repulsion)
     virus_number       = kwargs.get('virus_number', 4)         # number of viruses
     virus_spacing      = kwargs.get('virus_spacing', 5)         # spacing between viruses
 
