@@ -58,6 +58,7 @@ def create_input_file(run_index, **kwargs):
     virus_height       = kwargs.get('virus_height', 50)        # height at which the viruses are added
     virus_sigma        = kwargs.get('virus_sigma', 50)         # size of the virus (for virus-virus repulsion)
     virus_number       = kwargs.get('virus_number', 4)         # number of viruses
+    virus_spacing      = kwargs.get('virus_spacing', 5)         # spacing between viruses
 
     morse_D0           = kwargs.get('morse_D0', 5) # potential well depth
     morse_alpha        = kwargs.get('morse_alpha', 5) # controls potential well width (higher alpha = narrower well, shorter range)
@@ -94,7 +95,7 @@ def create_input_file(run_index, **kwargs):
     k   = kwargs.get('k', [0])                                                                     # stiffness of polymers
 
     if virus_number > 0:
-        virus_positions = calculate_virus_positions(total_N_p, polymer_seperation, virus_number)
+        virus_positions = calculate_virus_positions(total_N_p, polymer_seperation, virus_number, virus_spacing, virus_sigma)
 
     # first set of commands define the units, styles, sim box, computes etc.
     commands1 = f"""
