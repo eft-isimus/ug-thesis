@@ -506,6 +506,8 @@ dump_modify 1 sort id
 # Early density profile (running average for equilibration phase)
 fix early_density all ave/chunk 10 1 {steps_eq if steps_eq > 0 else 10} zchunks density/number ave running file {early_density_filename}
 
+minimize 1.0e-4 1.0e-6 1000 10000
+
 run {steps_eq}
 unfix early_density
 
