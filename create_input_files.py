@@ -223,10 +223,10 @@ pair_coeff 3 5 morse {morse_D0[1]} {morse_alpha} {morse_r0} {morse_cutoff}
 pair_coeff 4 5 morse {morse_D0[1]} {morse_alpha} {morse_r0} {morse_cutoff}
 
 # # virus-chain WCA interaction
-# pair_coeff 1 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
-# pair_coeff 2 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
-# pair_coeff 3 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
-# pair_coeff 4 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
+pair_coeff 1 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
+pair_coeff 2 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
+pair_coeff 3 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
+pair_coeff 4 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
 
 # virus-virus WCA interaction
 pair_coeff 5 5 lj/cut 1.0 {virus_sigma} {1.12246*virus_sigma}
